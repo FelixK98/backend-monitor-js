@@ -66,10 +66,12 @@ const mapNetworkToSensorID = (network) => {
   }
 };
 
-alert.getTraffic = async (req, res) => {
+alert.getTrafficByDate = async (req, res) => {
   //get all date
+  const dateParam = req.params.dates;
+
   const dates = await db.query(
-    ' select date(event.timestamp) as date from event where  (date(event.timestamp) BETWEEN DATE_SUB(date(date_add(now(), interval 7 HOUR)), INTERVAL 30 day)  AND date(date_add(now(), interval 7 HOUR))) group by date(event.timestamp)',
+    ` select date(event.timestamp) as date from event where  (date(event.timestamp) BETWEEN DATE_SUB(date(date_add(now(), interval 7 HOUR)), INTERVAL ${dateParam} day)  AND date(date_add(now(), interval 7 HOUR))) group by date(event.timestamp)`,
     {
       type: QueryTypes.SELECT,
     }
@@ -83,7 +85,7 @@ alert.getTraffic = async (req, res) => {
     `select count(cid) as count, date(event.timestamp) as 'time' 
     from event
     where event.sid = ${sensorID}
-    and  (date(event.timestamp) BETWEEN DATE_SUB(date(date_add(now(), interval 7 hour)), INTERVAL 30 day)  AND date(date_add(now(), interval 7 hour)))
+    and  (date(event.timestamp) BETWEEN DATE_SUB(date(date_add(now(), interval 7 hour)), INTERVAL ${dateParam} day)  AND date(date_add(now(), interval 7 hour)))
     group by date(event.timestamp)`,
     {
       type: QueryTypes.SELECT,

@@ -12,7 +12,10 @@ router.get(
 );
 router.get('/getTime/:ip/:sig', eventController.getEventByIPAndSignature);
 router.get('/getTodayTraffic/:network', eventController.getTodayTraffic);
-router.get('/traffic/:network', eventController.getTraffic);
+router.get(
+  '/getTrafficByDate/:network/:dates',
+  eventController.getTrafficByDate
+);
 router.get('/getPriorities', eventController.getPriorities);
 router.get('/getPriorityDetail/:id', eventController.getPriorityDetail);
 
