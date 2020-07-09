@@ -3,7 +3,22 @@ const db = require('../model/db');
 const alert = {};
 alert.showAlertTable = async (req, res) => {
   const data = await db.query(
-    "select DATE_FORMAT(timestamp, '%Y-%m-%d %H:%i:%s') as 'Time' ,  case when signature.sig_priority = 1 then 'HIGH' when signature.sig_priority = 2 then 'MEDIUM' when signature.sig_priority = 3 then 'LOW' when signature.sig_priority = 4 then 'LOW' end as Priority , case when iphdr.ip_proto = 1 then 'ICMP' when iphdr.ip_proto = 6 then 'TCP' WHEN iphdr.ip_proto = 17 then 'UDP' end as Protocol , sig_class_name as 'Class Type',  INET_NTOA(ip_src) as 'Source Address' ,  INET_NTOA(ip_dst) as 'Destination Address',  sig_name as 'Description' from event, iphdr, signature, sig_class where event.cid = iphdr.cid and event.sid = iphdr.sid and event.signature = signature.sig_id  and signature.sig_class_id = sig_class.sig_class_id ORDER BY event.timestamp desc",
+    `select DATE_FORMAT(timestamp, '%Y-%m-%d %H:%i:%s') as 'Time' ,  
+    case when signature.sig_priority = 1 then 'HIGH' 
+    when signature.sig_priority = 2 then 'MEDIUM' 
+    when signature.sig_priority = 3 then 'LOW' 
+    when signature.sig_priority = 4 then 'LOW' end as Priority , 
+    case when iphdr.ip_proto = 1 then 'ICMP' 
+    when iphdr.ip_proto = 6 then 'TCP' 
+    WHEN iphdr.ip_proto = 17 then 'UDP' end as Protocol , 
+    sensor.hostname as 'Interface',  INET_NTOA(ip_src) as 'Source Address' ,  
+    INET_NTOA(ip_dst) as 'Destination Address',  
+    sig_name as 'Description'
+     
+    from event, iphdr, signature, sig_class, sensor
+    where event.sid = sensor.sid and 
+    event.cid = iphdr.cid and event.sid = iphdr.sid and event.signature = signature.sig_id  
+    and signature.sig_class_id = sig_class.sig_class_id ORDER BY event.timestamp desc`,
     {
       type: QueryTypes.SELECT,
     }
@@ -68,7 +83,7 @@ const mapNetworkToSensorID = (network) => {
 
 alert.getTrafficByDate = async (req, res) => {
   //get all date
-  const dateParam = req.params.dates;
+  const dateParam = req.params.dates - 1;
 
   const dates = await db.query(
     ` select date(event.timestamp) as date from event where  (date(event.timestamp) BETWEEN DATE_SUB(date(date_add(now(), interval 7 HOUR)), INTERVAL ${dateParam} day)  AND date(date_add(now(), interval 7 HOUR))) group by date(event.timestamp)`,
