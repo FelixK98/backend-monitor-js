@@ -29,7 +29,14 @@ alert.showAlertTable = async (req, res) => {
 alert.showAlertTableBySignature = async (req, res) => {
   const sigName = req.params.sigName;
   const data = await db.query(
-    `select DATE_FORMAT(timestamp, '%Y-%m-%d %H:%i:%s') as 'Time' ,  case when signature.sig_priority = 1 then 'HIGH' when signature.sig_priority = 2 then 'MEDIUM' when signature.sig_priority = 3 then 'LOW' when signature.sig_priority = 4 then 'LOW' end as Priority , case when iphdr.ip_proto = 1 then 'ICMP' when iphdr.ip_proto = 6 then 'TCP' WHEN iphdr.ip_proto = 17 then 'UDP' end as Protocol , sig_class_name as 'Class Type',  INET_NTOA(ip_src) as 'Source Address' ,  INET_NTOA(ip_dst) as 'Destination Address' from event, iphdr, signature, sig_class where event.cid = iphdr.cid and event.sid = iphdr.sid and event.signature = signature.sig_id  and signature.sig_class_id = sig_class.sig_class_id and sig_name='${sigName}' ORDER BY event.timestamp desc`,
+    `select DATE_FORMAT(timestamp, '%Y-%m-%d %H:%i:%s') as 'Time' ,  
+    case when signature.sig_priority = 1 then 'HIGH' when signature.sig_priority = 2 then 'MEDIUM' when signature.sig_priority = 3 then 'LOW' when signature.sig_priority = 4 then 'LOW' end as Priority , 
+    case when iphdr.ip_proto = 1 then 'ICMP' when iphdr.ip_proto = 6 then 'TCP' WHEN iphdr.ip_proto = 17 then 'UDP' end as Protocol 
+    , sensor.hostname as 'Interface',  INET_NTOA(ip_src) as 'Source Address' ,  INET_NTOA(ip_dst) as 'Destination Address' 
+    from event, iphdr, signature, sig_class , sensor
+    where event.cid = iphdr.cid and event.sid = iphdr.sid 
+    and event.sid = sensor.sid
+    and event.signature = signature.sig_id  and signature.sig_class_id = sig_class.sig_class_id and sig_name='${sigName}' ORDER BY event.timestamp desc`,
     {
       type: QueryTypes.SELECT,
     }
@@ -55,11 +62,13 @@ alert.getEventByDate = async (req, res) => {
     case when iphdr.ip_proto = 1 then 'ICMP' 
     when iphdr.ip_proto = 6 then 'TCP' 
     WHEN iphdr.ip_proto = 17 then 'UDP' end as Protocol ,
-    sig_class_name as 'Class Type',  
+    sensor.hostname as 'Interface',  
     INET_NTOA(ip_src) as 'Source Address' ,  INET_NTOA(ip_dst) as 'Destination Address', 
     sig_name as 'Description' 
-    from event, iphdr, signature, sig_class 
-    where event.cid = iphdr.cid and event.sid = iphdr.sid and event.signature = signature.sig_id  and signature.sig_class_id = sig_class.sig_class_id 
+    from event, iphdr, signature, sig_class, sensor
+    where event.cid = iphdr.cid and event.sid = iphdr.sid 
+    and event.sid =sensor.sid
+    and event.signature = signature.sig_id  and signature.sig_class_id = sig_class.sig_class_id 
     and (timestamp BETWEEN DATE_ADD('${startDate}',INTERVAL 7 HOUR) AND DATE_ADD('${endDate}',INTERVAL 7 HOUR))
     ORDER BY event.timestamp desc`,
     {
@@ -210,15 +219,15 @@ alert.getMonthsTraffic = async (req, res) => {
   const sensorID = mapNetworkToSensorID(network);
   //get event statistic
   let eventStatistic = await db.query(
-    `select MONTHNAME(event.timestamp) as time, count(MONTHNAME(event.timestamp)) as count
+    `select convert(MONTHNAME(event.timestamp), CHAR) as time, count(convert(MONTHNAME(event.timestamp), CHAR)) as count
     from event
     where event.sid = '${sensorID}'
-    group by(MONTHNAME(event.timestamp))`,
+    group by (convert(MONTHNAME(event.timestamp), CHAR))`,
     {
       type: QueryTypes.SELECT,
     }
   );
-  const eventMonths = eventStatistic.map((event) => event.month);
+  const eventMonths = eventStatistic.map((event) => event.time);
 
   months.forEach((month) => {
     if (!eventMonths.includes(month)) {
