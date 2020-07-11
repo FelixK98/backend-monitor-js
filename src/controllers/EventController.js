@@ -186,6 +186,54 @@ alert.getTodayTraffic = async (req, res) => {
 
   res.json(eventStatistic);
 };
+
+alert.getMonthsTraffic = async (req, res) => {
+  //get all date
+  const months = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+
+  //extract param
+  const network = req.params.network;
+  //convert param to sensor
+  const sensorID = mapNetworkToSensorID(network);
+  //get event statistic
+  let eventStatistic = await db.query(
+    `select MONTHNAME(event.timestamp) as time, count(MONTHNAME(event.timestamp)) as count
+    from event
+    where event.sid = '${sensorID}'
+    group by(MONTHNAME(event.timestamp))`,
+    {
+      type: QueryTypes.SELECT,
+    }
+  );
+  const eventMonths = eventStatistic.map((event) => event.month);
+
+  months.forEach((month) => {
+    if (!eventMonths.includes(month)) {
+      eventStatistic.push({ time: month, count: 0 });
+    }
+  });
+
+  eventStatistic.sort((a, b) => {
+    let monthA = months.indexOf(a.time);
+    let monthB = months.indexOf(b.time);
+    return monthA - monthB;
+  });
+
+  res.json(eventStatistic);
+};
 //
 alert.getPriorities = async (req, res) => {
   let data = await db.query(

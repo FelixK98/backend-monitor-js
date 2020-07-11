@@ -13,6 +13,7 @@ router.get(
 );
 router.get('/getTime/:ip/:sig', eventController.getEventByIPAndSignature);
 router.get('/getTodayTraffic/:network', eventController.getTodayTraffic);
+router.get('/getMonthTraffic/:network', eventController.getMonthsTraffic);
 router.get(
   '/getTrafficByDate/:network/:dates',
   eventController.getTrafficByDate
