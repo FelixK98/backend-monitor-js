@@ -1,35 +1,42 @@
 const passport = require('passport');
 authController = require('../controllers/AuthController');
 var fs = require('fs');
+const auth = require('../controllers/AuthController');
+
 express = require('express');
 router = express.Router();
+router.use('/', authController.checkSession);
 router.get(
   '/google',
   passport.authenticate('google', { scope: ['profile', 'email'] })
 );
-router.get(
-  '/google/callback',
-  passport.authenticate('google'),
-  async (req, res) => {
-    await fs.readFile('userInSession.json', 'utf-8', async (err, file) => {
-      let file_data = JSON.parse(file);
-      file_data.push(req.user.email);
-      await fs.writeFile(
-        'userInSession.json',
-        JSON.stringify(file_data),
-        (err, file) => {
-          res.redirect('/');
-        }
-      );
-    });
-  }
-);
+router.get('/google/callback', passport.authenticate('google'), (req, res) => {
+  fs.readFile('userInSession.json', 'utf-8', async (err, file) => {
+    let file_data = JSON.parse(file);
 
-router.get('/logout', async (req, res) => {
-  await fs.readFile('userInSession.json', 'utf-8', async (err, file) => {
+    file_data.push(req.user.email);
+    fs.writeFile(
+      'userInSession.json',
+      JSON.stringify(file_data),
+      (err, file) => {
+        res.redirect('/');
+      }
+    );
+  });
+  // const isUserInDB = await auth.isUserInDB();
+  // const isUserInDB = true;
+  // if (isUserInDB) {
+
+  // } else {
+  //   res.redirect('/');
+  // }
+});
+
+router.get('/logout', (req, res) => {
+  fs.readFile('userInSession.json', 'utf-8', async (err, file) => {
     let file_data = JSON.parse(file);
     file_data = file_data.filter((item) => item != req.user.email);
-    await fs.writeFile(
+    fs.writeFile(
       'userInSession.json',
       JSON.stringify(file_data),
       (err, file) => {

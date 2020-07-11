@@ -41,6 +41,17 @@ auth.getUserInfo = async (req, res) => {
   res.json(result);
 };
 
+auth.isUserInDB = async (req, res) => {
+  let result = false;
+  const query = `SELECT * FROM account where email='${req.user.email}'`;
+  const data = await db.query(query, {
+    type: QueryTypes.SELECT,
+  });
+  if (data.length > 0) {
+    result = true;
+  }
+  return result;
+};
 auth.getOnlineAccount = async (req, res) => {
   const query = 'SELECT * FROM account';
   const data = await db.query(query, {
@@ -72,5 +83,9 @@ auth.addAccount = async (req, res) => {
   }
 
   res.json(result);
+};
+auth.checkSession = (req, res, next) => {
+  // console.log(req.user);
+  next();
 };
 module.exports = auth;

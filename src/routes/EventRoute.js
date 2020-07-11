@@ -2,6 +2,7 @@ eventController = require('../controllers/EventController');
 
 express = require('express');
 router = express.Router();
+
 router.get('/test', eventController.test);
 router.get('/', eventController.showAlertTable);
 

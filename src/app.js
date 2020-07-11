@@ -8,13 +8,14 @@ const nodeRoute = require('./routes/LocalNodeRoute');
 const ipRoute = require('./routes/IPRoute');
 const authRoute = require('./routes/AuthRoute');
 const blockRoute = require('./routes/BlockIPRoute');
-
+const sessionRoute = require('./routes/CheckSessionRoute');
 const passport = require('passport');
 const cookieSession = require('cookie-session');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const fs = require('fs').promises;
 
-app.use(cors());
-
+//app.use(cors());
+app.use(cors({ credentials: true, origin: 'http://localhost:4000' }));
 //config auth
 
 passport.serializeUser((user, done) => {
@@ -47,10 +48,13 @@ app.use(
     keys: ['khoa123456'],
   })
 );
+
 app.use(passport.initialize());
 app.use(passport.session());
 
+app.use('/', sessionRoute);
 //config routing
+
 app.use('/events', eventRoute);
 app.use('/sig', signatureRoute);
 app.use('/nodes', nodeRoute);
