@@ -10,7 +10,10 @@ const authRoute = require('./routes/AuthRoute');
 const blockRoute = require('./routes/BlockIPRoute');
 const sessionRoute = require('./routes/CheckSessionRoute');
 const passport = require('passport');
+const randomstring = require('randomstring');
 const cookieSession = require('cookie-session');
+const authController = require('./controllers/AuthController');
+
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const fs = require('fs').promises;
 
@@ -18,10 +21,25 @@ const fs = require('fs').promises;
 app.use(cors({ credentials: true, origin: 'http://localhost:4000' }));
 //config auth
 
-passport.serializeUser((user, done) => {
-  done(null, user);
+passport.serializeUser(async (user, done) => {
+  console.log('---------In serializeUser---------');
+  //Check if user is in db
+  const isValid = await authController.isUserInDB(user.email);
+  //Check if user is admin
+  const isAdmin = isValid ? await authController.isAdmin(user.email) : false;
+
+  //Generate session id
+  const sessionID = randomstring.generate();
+  //Read session file
+  const file = await fs.readFile('userInSession.json', 'utf-8');
+  let file_data = JSON.parse(file);
+  // Add user to session file
+  file_data.push({ sessionID, ...user, isValid, isAdmin });
+  await fs.writeFile('userInSession.json', JSON.stringify(file_data));
+  done(null, sessionID);
 });
 passport.deserializeUser((user, done) => {
+  console.log('---------In derializeUser---------');
   done(null, user);
 });
 passport.use(
@@ -33,6 +51,7 @@ passport.use(
       callbackURL: '/auth/google/callback',
     },
     (accessToken, refreshToken, profile, done) => {
+      console.log('----In google strategy----');
       done(null, {
         id: profile.id,
         name: profile.displayName,

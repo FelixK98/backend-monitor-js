@@ -1,7 +1,7 @@
 const { QueryTypes } = require('sequelize');
 const db = require('../model/db');
 const auth = {};
-var fs = require('fs');
+var fs = require('fs').promises;
 auth.getAuthInfo = async (req, res) => {
   const query = `SELECT * FROM account where email='${req.params.email}'`;
   const data = await db.query(query, {
@@ -16,16 +16,19 @@ auth.getAuthInfo = async (req, res) => {
   res.json(jsonData);
 };
 auth.getUserInfo = async (req, res) => {
+  console.log('---in get userinfo----');
+
   let result = {
     user_type: 'guest',
   };
-  if (req.user) {
+  const file = await fs.readFile('userInSession.json', 'utf-8');
+  const sessionList = JSON.parse(file);
+  const userInfo = sessionList.find((item) => item.sessionID === req.user);
+
+  if (userInfo) {
     result.user_type = 'invalid';
-    const query = `SELECT * FROM account where email='${req.user.email}'`;
-    const data = await db.query(query, {
-      type: QueryTypes.SELECT,
-    });
-    if (data.length > 0) {
+
+    if (userInfo.isValid) {
       user_type = 'valid';
       await db.query(
         `UPDATE account SET img = '${req.user.photo}' WHERE email = '${req.user.email}'`,
@@ -33,17 +36,16 @@ auth.getUserInfo = async (req, res) => {
       );
       result = {
         user_type,
-        ...req.user,
-        isAdmin: !!data[0].isAdmin,
+        ...userInfo,
       };
     }
   }
   res.json(result);
 };
 
-auth.isUserInDB = async (req, res) => {
+auth.isUserInDB = async (email) => {
   let result = false;
-  const query = `SELECT * FROM account where email='${req.user.email}'`;
+  const query = `SELECT * FROM account where email='${email}'`;
   const data = await db.query(query, {
     type: QueryTypes.SELECT,
   });
@@ -52,21 +54,29 @@ auth.isUserInDB = async (req, res) => {
   }
   return result;
 };
+auth.isAdmin = async (email) => {
+  const query = `SELECT * FROM account where email='${email}'`;
+  const data = await db.query(query, {
+    type: QueryTypes.SELECT,
+  });
+
+  return !!data[0].isAdmin;
+};
 auth.getOnlineAccount = async (req, res) => {
   const query = 'SELECT * FROM account';
   const data = await db.query(query, {
     type: QueryTypes.SELECT,
   });
-  fs.readFile('userInSession.json', 'utf-8', (err, file) => {
-    file_data = JSON.parse(file);
-    const result = data.map((account) => {
-      return {
-        ...account,
-        isOnline: file_data.includes(account.email) ? true : false,
-      };
-    });
-    res.json(result);
+  file = await fs.readFile('userInSession.json', 'utf-8');
+  file_data = JSON.parse(file);
+  const onlineUserList = file_data.map((item) => item.email);
+  const result = data.map((account) => {
+    return {
+      ...account,
+      isOnline: onlineUserList.includes(account.email) ? true : false,
+    };
   });
+  res.json(result);
 };
 auth.addAccount = async (req, res) => {
   let result = true;
@@ -78,14 +88,9 @@ auth.addAccount = async (req, res) => {
     });
   } catch (err) {
     result = false;
-    // console.log('--------------------------------');
-    // console.log(err);
   }
 
   res.json(result);
 };
-auth.checkSession = (req, res, next) => {
-  // console.log(req.user);
-  next();
-};
+
 module.exports = auth;
