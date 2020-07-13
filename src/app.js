@@ -36,10 +36,21 @@ passport.serializeUser(async (user, done) => {
   // Add user to session file
   file_data.push({ sessionID, ...user, isValid, isAdmin });
   await fs.writeFile('userInSession.json', JSON.stringify(file_data));
+
+  // Set time out to remove user session
+  setTimeout(
+    (sessionList, sessionID) => {
+      updateList = sessionList.filter((item) => item.sessionID !== sessionID);
+      fs.writeFile('userInSession.json', JSON.stringify(updateList));
+    },
+    30 * 60 * 1000,
+    file_data,
+    sessionID
+  );
+
   done(null, sessionID);
 });
 passport.deserializeUser((user, done) => {
-  console.log('---------In derializeUser---------');
   done(null, user);
 });
 passport.use(
@@ -63,7 +74,7 @@ passport.use(
 );
 app.use(
   cookieSession({
-    maxAge: 30 * 24 * 60 * 60 * 1000,
+    maxAge: 30 * 60 * 1000,
     keys: ['khoa123456'],
   })
 );
