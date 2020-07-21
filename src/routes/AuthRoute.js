@@ -2,7 +2,7 @@ const passport = require('passport');
 authController = require('../controllers/AuthController');
 const fs = require('fs').promises;
 const auth = require('../controllers/AuthController');
-
+const client = require('../model/RedisSession');
 express = require('express');
 router = express.Router();
 
@@ -16,11 +16,10 @@ router.get('/google/callback', passport.authenticate('google'), (req, res) => {
 
 router.get('/logout', async (req, res) => {
   console.log('---in logout----');
-  const file = await fs.readFile('userInSession.json', 'utf-8');
-  let file_data = JSON.parse(file);
-  file_data = file_data.filter((item) => item.sessionID != req.user);
-  await fs.writeFile('userInSession.json', JSON.stringify(file_data));
+
+  await client.del(req.user);
   req.logout();
+
   res.redirect('/');
 });
 

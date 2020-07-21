@@ -1,6 +1,8 @@
 const { QueryTypes } = require('sequelize');
 const db = require('../model/db');
+const client = require('../model/RedisSession');
 const auth = {};
+
 var fs = require('fs').promises;
 auth.getAuthInfo = async (req, res) => {
   const query = `SELECT * FROM account where email='${req.params.email}'`;
@@ -16,14 +18,12 @@ auth.getAuthInfo = async (req, res) => {
   res.json(jsonData);
 };
 auth.getUserInfo = async (req, res) => {
-  console.log('---in get userinfo----');
-
   let result = {
     user_type: 'guest',
   };
-  const file = await fs.readFile('userInSession.json', 'utf-8');
-  const sessionList = JSON.parse(file);
-  const userInfo = sessionList.find((item) => item.sessionID === req.user);
+
+  let userInfo = await client.get(req.user);
+  userInfo = JSON.parse(userInfo);
 
   if (userInfo) {
     result.user_type = 'invalid';
@@ -62,18 +62,35 @@ auth.isAdmin = async (email) => {
 
   return !!data[0].isAdmin;
 };
+auth.checkUser = async (email) => {
+  const query = `SELECT isAdmin FROM account where email='${email}'`;
+  const data = await db.query(query, {
+    type: QueryTypes.SELECT,
+  });
+
+  return { isAdmin: !!data[0].isAdmin, isValid: data.length > 0 };
+};
 auth.getOnlineAccount = async (req, res) => {
   const query = 'SELECT * FROM account';
   const data = await db.query(query, {
     type: QueryTypes.SELECT,
   });
-  file = await fs.readFile('userInSession.json', 'utf-8');
-  file_data = JSON.parse(file);
-  const onlineUserList = file_data.map((item) => item.email);
+  // file = await fs.readFile('userInSession.json', 'utf-8');
+  // file_data = JSON.parse(file);
+  // const onlineUserList = file_data.map((item) => item.email);
+  const klist = await client.keys('*');
+
+  const emailList = new Set();
+  for (let i = 0; i < klist.length; i++) {
+    let session = await client.get(klist[i]);
+
+    emailList.add(JSON.parse(session).email);
+  }
+
   const result = data.map((account) => {
     return {
       ...account,
-      isOnline: onlineUserList.includes(account.email) ? true : false,
+      isOnline: emailList.has(account.email),
     };
   });
   res.json(result);

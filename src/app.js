@@ -13,10 +13,10 @@ const passport = require('passport');
 const randomstring = require('randomstring');
 const cookieSession = require('cookie-session');
 const authController = require('./controllers/AuthController');
+const client = require('./model/RedisSession');
 
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const fs = require('fs').promises;
-
 //app.use(cors());
 app.use(cors({ credentials: true, origin: 'http://localhost:4000' }));
 //config auth
@@ -24,18 +24,26 @@ app.use(cors({ credentials: true, origin: 'http://localhost:4000' }));
 passport.serializeUser(async (user, done) => {
   console.log('---------In serializeUser---------');
   //Check if user is in db
-  const isValid = await authController.isUserInDB(user.email);
+  //const isValid = await authController.isUserInDB(user.email);
   //Check if user is admin
-  const isAdmin = isValid ? await authController.isAdmin(user.email) : false;
-
+  //const isAdmin = isValid ? await authController.isAdmin(user.email) : false;
+  const { isValid, isAdmin } = await authController.checkUser(user.email);
+  console.log(`is admin :${isAdmin}`);
+  console.log(`is valid :${isValid}`);
   //Generate session id
   const sessionID = randomstring.generate();
+  await client.set(
+    sessionID,
+    JSON.stringify({ ...user, isValid, isAdmin }),
+    'EX',
+    60 * 60
+  );
   //Read session file
-  const file = await fs.readFile('userInSession.json', 'utf-8');
-  let file_data = JSON.parse(file);
+  // const file = await fs.readFile('userInSession.json', 'utf-8');
+  // let file_data = JSON.parse(file);
   // Add user to session file
-  file_data.push({ sessionID, ...user, isValid, isAdmin });
-  await fs.writeFile('userInSession.json', JSON.stringify(file_data));
+  // file_data.push({ sessionID, ...user, isValid, isAdmin });
+  // await fs.writeFile('userInSession.json', JSON.stringify(file_data));
 
   // Set time out to remove user session
   // setTimeout(
@@ -74,7 +82,7 @@ passport.use(
 );
 app.use(
   cookieSession({
-    maxAge: 24 * 60 * 60 * 1000,
+    maxAge: 60 * 60 * 1000,
     keys: ['khoa123456'],
   })
 );
