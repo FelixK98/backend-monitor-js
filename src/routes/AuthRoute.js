@@ -11,7 +11,7 @@ router.get(
   passport.authenticate('google', { scope: ['profile', 'email'] })
 );
 router.get('/google/callback', passport.authenticate('google'), (req, res) => {
-  res.redirect('/');
+  res.redirect('https://frmonitor.herokuapp.com');
 });
 
 router.get('/logout', async (req, res) => {
@@ -20,7 +20,7 @@ router.get('/logout', async (req, res) => {
   await client.del(req.user);
   req.logout();
 
-  res.redirect('/');
+  res.redirect('https://frmonitor.herokuapp.com');
 });
 
 router.get('/current_user', authController.getUserInfo);

@@ -18,7 +18,12 @@ const client = require('./model/RedisSession');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const fs = require('fs').promises;
 //app.use(cors());
-app.use(cors({ credentials: true, origin: 'http://localhost:4000' }));
+app.use(
+  cors({
+    credentials: true,
+    origin: 'https://frmonitor.herokuapp.com',
+  })
+);
 //config auth
 
 passport.serializeUser(async (user, done) => {
@@ -99,4 +104,4 @@ app.use('/nodes', nodeRoute);
 app.use('/ip', ipRoute);
 app.use('/auth', authRoute);
 app.use('/block', blockRoute);
-app.listen(5000);
+app.listen(process.env.PORT || 5000);
